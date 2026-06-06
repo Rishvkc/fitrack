@@ -24,7 +24,8 @@ Open [http://localhost:3000](http://localhost:3000), configure settings, and sta
 | `TURSO_DATABASE_URL` | Turso DB URL (`file:local.db` for local dev) |
 | `TURSO_AUTH_TOKEN` | Turso auth token (production only) |
 | `SHORTCUT_SECRET` | Bearer token for `/api/log` POST from Shortcuts |
-| `ANTHROPIC_API_KEY` | Anthropic API key for coach briefs |
+| `HUGGINGFACE_API_KEY` | Hugging Face token for coach briefs (Llama 3.1 8B) |
+| `HF_MODEL` | Optional model override (default: `meta-llama/Llama-3.1-8B-Instruct`) |
 
 ## Apple Shortcuts setup
 
@@ -44,9 +45,16 @@ Open [http://localhost:3000](http://localhost:3000), configure settings, and sta
 ## Deploy to Vercel
 
 1. Push to GitHub and import in Vercel
-2. Create a [Turso](https://turso.tech) database and add env vars
-3. Run `POST /api/init` once after deploy to create tables
-4. Update your Shortcut URL to the Vercel domain
+2. Under **Project Settings → General → Build & Development Settings**:
+   - **Framework Preset:** Next.js
+   - **Build Command:** `npm run build` (default)
+   - **Output Directory:** leave **empty** (do not set `public`)
+   - **Install Command:** `npm install` (default)
+3. Create a [Turso](https://turso.tech) database and add env vars
+4. Run `POST /api/init` once after deploy to create tables
+5. Update your Shortcut URL to the Vercel domain
+
+If you see *"No Output Directory named public found"*, the Framework Preset is wrong — switch it to **Next.js** and clear the Output Directory override.
 
 ## API routes
 
