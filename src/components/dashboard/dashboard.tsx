@@ -131,15 +131,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <div className="mb-6">
-        <GoalChips
-          startWeight={settings.startWeightLbs}
-          goalWeight={settings.goalWeightLbs}
-          lossPct={settings.targetLossPctWeek}
-          targetWeeklyLoss={targetWeeklyLoss}
-          durationWeeks={settings.durationWeeks}
-        />
-      </div>
+
 
       <div className="mb-6">
         <StatCards

@@ -30,7 +30,7 @@ export async function generateCoachBrief(
     entry?.coachBrief &&
     entry.coachBriefGenerated &&
     format(parseISO(entry.coachBriefGenerated), "yyyy-MM-dd") ===
-      format(new Date(), "yyyy-MM-dd")
+    format(new Date(), "yyyy-MM-dd")
   ) {
     return entry.coachBrief;
   }
