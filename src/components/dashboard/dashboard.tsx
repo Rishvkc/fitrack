@@ -97,7 +97,7 @@ export function Dashboard() {
   const actualWeeklyChange = rollingAvgDelta;
 
   const weeklyHistory = weeklyAvgWeightHistory(settings, entries, today);
-  const chartData = buildWeightChartData(settings, entries, today);
+  const chartData = buildWeightChartData(settings, entries);
   const showMissingBanner = latestEntry?.weightLbs == null;
 
   return (
@@ -166,7 +166,10 @@ export function Dashboard() {
       )}
 
       <div className="mb-6">
-        <WeightChart data={chartData} />
+        <WeightChart
+          data={chartData}
+          durationWeeks={settings.durationWeeks}
+        />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

@@ -257,35 +257,33 @@ export function barDeficitColor(
 }
 
 export interface ChartDataPoint {
+  week: number;
+  weekLabel: string;
   date: string;
   rollingAvg: number | null;
   projected: number | null;
   goal: number;
 }
 
+/** One point per week: 7-day rolling avg at each week's end, spanning full cut duration. */
 export function buildWeightChartData(
   settings: Settings,
-  entries: LogEntry[],
-  asOfDate?: string
+  entries: LogEntry[]
 ): ChartDataPoint[] {
-  const endDate = addDays(
-    parseISO(settings.startDate),
-    settings.durationWeeks * 7
-  );
-  const capDate = asOfDate ? parseISO(asOfDate) : endDate;
-  const chartEnd = capDate < endDate ? capDate : endDate;
+  const start = parseISO(settings.startDate);
   const points: ChartDataPoint[] = [];
-  let current = parseISO(settings.startDate);
 
-  while (current <= chartEnd) {
-    const dateStr = format(current, "yyyy-MM-dd");
+  for (let week = 1; week <= settings.durationWeeks; week++) {
+    const weekEnd = addDays(start, week * 7 - 1);
+    const dateStr = format(weekEnd, "yyyy-MM-dd");
     points.push({
+      week,
+      weekLabel: `Wk ${week}`,
       date: dateStr,
       rollingAvg: rollingAvgWeight(entries, dateStr),
       projected: projectedWeight(settings, entries, dateStr),
       goal: onTrackWeight(settings, dateStr),
     });
-    current = addDays(current, 1);
   }
 
   return points;

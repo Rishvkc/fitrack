@@ -16,28 +16,32 @@ import { format, parseISO } from "date-fns";
 
 interface WeightChartProps {
   data: ChartDataPoint[];
+  durationWeeks: number;
 }
 
-export function WeightChart({ data }: WeightChartProps) {
-  const sampled = data.filter(
-    (_, i) => i % Math.max(1, Math.floor(data.length / 30)) === 0
-  );
-
+export function WeightChart({ data, durationWeeks }: WeightChartProps) {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-medium">Weight trend</CardTitle>
+        <CardTitle className="text-base font-medium">
+          Weight trend (7-day avg)
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-72 w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={sampled} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <LineChart
+              data={data}
+              margin={{ top: 5, right: 10, left: 0, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis
-                dataKey="date"
-                tickFormatter={(d) => format(parseISO(d), "M/d")}
-                tick={{ fontSize: 11 }}
-                interval="preserveStartEnd"
+                dataKey="weekLabel"
+                tick={{ fontSize: durationWeeks > 16 ? 9 : 11 }}
+                interval={0}
+                angle={durationWeeks > 10 ? -45 : 0}
+                textAnchor={durationWeeks > 10 ? "end" : "middle"}
+                height={durationWeeks > 10 ? 50 : 30}
               />
               <YAxis
                 domain={["dataMin - 2", "dataMax + 2"]}
@@ -45,7 +49,11 @@ export function WeightChart({ data }: WeightChartProps) {
                 width={40}
               />
               <Tooltip
-                labelFormatter={(d) => format(parseISO(String(d)), "MMM d, yyyy")}
+                labelFormatter={(_label, payload) => {
+                  const point = payload?.[0]?.payload as ChartDataPoint | undefined;
+                  if (!point) return "";
+                  return `Week ${point.week} · ${format(parseISO(point.date), "MMM d, yyyy")}`;
+                }}
                 formatter={(value: number, name: string) => [
                   value != null ? `${value.toFixed(1)} lbs` : "—",
                   name,

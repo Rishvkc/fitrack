@@ -24,7 +24,7 @@ Open [http://localhost:3000](http://localhost:3000), configure settings, and sta
 | `TURSO_DATABASE_URL` | Turso DB URL (`file:local.db` for local dev) |
 | `TURSO_AUTH_TOKEN` | Turso auth token (production only) |
 | `SHORTCUT_SECRET` | Bearer token for `/api/log` POST from Shortcuts |
-| `HUGGINGFACE_API_KEY` | Hugging Face token for coach briefs (Llama 3.1 8B) |
+| `HUGGINGFACE_API_KEY` | HF **fine-grained** token with **Make calls to Inference Providers** enabled |
 | `HF_MODEL` | Optional model override (default: `meta-llama/Llama-3.1-8B-Instruct`) |
 
 ## Apple Shortcuts setup

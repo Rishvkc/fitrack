@@ -97,15 +97,26 @@ Write the morning brief.`;
   const model = process.env.HF_MODEL ?? DEFAULT_MODEL;
   const client = new InferenceClient(apiKey);
 
-  const response = await client.chatCompletion({
-    model,
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    max_tokens: 1024,
-    temperature: 0.7,
-  });
+  let response;
+  try {
+    response = await client.chatCompletion({
+      model,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 1024,
+      temperature: 0.7,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes("sufficient permissions")) {
+      throw new Error(
+        "Hugging Face token missing Inference Providers permission. Create a fine-grained token at huggingface.co/settings/tokens with 'Make calls to Inference Providers' enabled."
+      );
+    }
+    throw error;
+  }
 
   const brief = response.choices[0]?.message?.content ?? "";
 
