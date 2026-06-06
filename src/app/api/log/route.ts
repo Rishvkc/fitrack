@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { desc } from "drizzle-orm";
 import { db } from "@/db";
+import { ensureSchema } from "@/db/init-schema";
 import { logEntries } from "@/db/schema";
 import { verifyShortcutAuth } from "@/lib/auth";
 import { upsertLogEntry } from "@/lib/log-helpers";
@@ -11,6 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await ensureSchema();
     const body = await request.json();
     const { date, weight_lbs, calories_consumed, active_calories, resting_calories } =
       body;
@@ -40,6 +42,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
+    await ensureSchema();
     const entries = await db.query.logEntries.findMany({
       orderBy: [desc(logEntries.date)],
     });

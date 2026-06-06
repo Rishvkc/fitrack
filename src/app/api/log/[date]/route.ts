@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
+import { ensureSchema } from "@/db/init-schema";
 import { logEntries } from "@/db/schema";
 import { upsertLogEntry } from "@/lib/log-helpers";
 
@@ -9,6 +10,7 @@ export async function GET(
   { params }: { params: { date: string } }
 ) {
   try {
+    await ensureSchema();
     const entry = await db.query.logEntries.findFirst({
       where: eq(logEntries.date, params.date),
     });
@@ -32,6 +34,7 @@ export async function PATCH(
   { params }: { params: { date: string } }
 ) {
   try {
+    await ensureSchema();
     const body = await request.json();
     const entry = await upsertLogEntry({
       date: params.date,

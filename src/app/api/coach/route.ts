@@ -10,9 +10,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "date is required" }, { status: 400 });
     }
 
-    if (!process.env.ANTHROPIC_API_KEY) {
+    if (!process.env.HUGGINGFACE_API_KEY) {
       return NextResponse.json(
-        { error: "ANTHROPIC_API_KEY not configured" },
+        { error: "HUGGINGFACE_API_KEY not configured" },
         { status: 503 }
       );
     }

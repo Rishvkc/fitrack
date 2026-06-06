@@ -1,7 +1,8 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { InferenceClient } from "@huggingface/inference";
 import { format, parseISO } from "date-fns";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
+import { ensureSchema } from "@/db/init-schema";
 import { logEntries } from "@/db/schema";
 import {
   onTrackWeight,
@@ -11,12 +12,15 @@ import {
   weeksRemaining,
 } from "@/lib/calculations";
 
+const DEFAULT_MODEL = "meta-llama/Llama-3.1-8B-Instruct";
+
 const SYSTEM_PROMPT = `You are a personal performance coach for an endurance athlete on a structured 12-week weight cut. Your job is to write a concise morning brief — 3 to 4 short paragraphs — that tells the athlete where they stand and what to focus on today. Be direct and specific. Use the athlete's name (Rish). Ground every observation in the actual numbers provided. Do not give generic nutrition or exercise advice. Do not use bullet points. Do not be a cheerleader. If they're behind, say so plainly. If they're ahead, acknowledge it without overpraising. End with one concrete, specific action for today.`;
 
 export async function generateCoachBrief(
   date: string,
   forceRegenerate = false
 ): Promise<string> {
+  await ensureSchema();
   const entry = await db.query.logEntries.findFirst({
     where: eq(logEntries.date, date),
   });
@@ -34,6 +38,11 @@ export async function generateCoachBrief(
   const settings = await db.query.settings.findFirst();
   if (!settings) {
     throw new Error("Settings not configured");
+  }
+
+  const apiKey = process.env.HUGGINGFACE_API_KEY;
+  if (!apiKey) {
+    throw new Error("HUGGINGFACE_API_KEY not configured");
   }
 
   const allEntries = await db.query.logEntries.findMany();
@@ -85,19 +94,20 @@ Notable: ${notable.length > 0 ? notable.join(" ") : "None."}
 
 Write the morning brief.`;
 
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-  });
+  const model = process.env.HF_MODEL ?? DEFAULT_MODEL;
+  const client = new InferenceClient(apiKey);
 
-  const message = await client.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const response = await client.chatCompletion({
+    model,
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: userPrompt },
+    ],
     max_tokens: 1024,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
+    temperature: 0.7,
   });
 
-  const brief =
-    message.content[0].type === "text" ? message.content[0].text : "";
+  const brief = response.choices[0]?.message?.content ?? "";
 
   const now = new Date().toISOString();
 

@@ -13,7 +13,7 @@
     "db:init": "curl -X POST http://localhost:3000/api/init"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
+    "@huggingface/inference": "^4.0.5",
     "@libsql/client": "^0.14.0",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-label": "^2.1.1",
