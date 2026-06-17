@@ -4,6 +4,7 @@ import {
   format,
   addDays,
   subDays,
+  startOfWeek,
 } from "date-fns";
 import type { LogEntry, Settings } from "@/db/schema";
 
@@ -292,4 +293,71 @@ export function buildWeightChartData(
 export function formatDelta(value: number, unit: string): string {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(1)} ${unit}`;
+}
+
+function avgNonNull(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((a, b) => a + b, 0) / values.length;
+}
+
+export function caloriesBurned(entry: LogEntry): number | null {
+  if (entry.activeCalories != null || entry.restingCalories != null) {
+    return (entry.activeCalories ?? 0) + (entry.restingCalories ?? 0);
+  }
+  return entry.tdee;
+}
+
+export interface WeekDayMetrics {
+  date: string;
+  dayLabel: string;
+  isToday: boolean;
+  isFuture: boolean;
+  weightLbs: number | null;
+  caloriesConsumed: number | null;
+  caloriesBurned: number | null;
+  runningAvgWeight: number | null;
+  runningAvgConsumed: number | null;
+  runningAvgBurned: number | null;
+}
+
+/** Mon–Sun daily metrics for the calendar week containing asOfDate. */
+export function buildCurrentWeekDailyMetrics(
+  entries: LogEntry[],
+  asOfDate: string
+): WeekDayMetrics[] {
+  const ref = parseISO(asOfDate);
+  const weekStart = startOfWeek(ref, { weekStartsOn: 1 });
+  const weights: number[] = [];
+  const consumed: number[] = [];
+  const burned: number[] = [];
+  const days: WeekDayMetrics[] = [];
+
+  for (let i = 0; i < 7; i++) {
+    const day = addDays(weekStart, i);
+    const dateStr = format(day, "yyyy-MM-dd");
+    const entry = entries.find((e) => e.date === dateStr);
+
+    const weightLbs = entry?.weightLbs ?? null;
+    const caloriesConsumed = entry?.caloriesConsumed ?? null;
+    const caloriesBurnedVal = entry ? caloriesBurned(entry) : null;
+
+    if (weightLbs != null) weights.push(weightLbs);
+    if (caloriesConsumed != null) consumed.push(caloriesConsumed);
+    if (caloriesBurnedVal != null) burned.push(caloriesBurnedVal);
+
+    days.push({
+      date: dateStr,
+      dayLabel: format(day, "EEE"),
+      isToday: dateStr === asOfDate,
+      isFuture: dateStr > asOfDate,
+      weightLbs,
+      caloriesConsumed,
+      caloriesBurned: caloriesBurnedVal,
+      runningAvgWeight: avgNonNull(weights),
+      runningAvgConsumed: avgNonNull(consumed),
+      runningAvgBurned: avgNonNull(burned),
+    });
+  }
+
+  return days;
 }

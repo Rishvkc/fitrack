@@ -2,18 +2,19 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { format, parseISO, subDays } from "date-fns";
+import { addDays, format, parseISO, startOfWeek, subDays } from "date-fns";
 import { Settings, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { WeightChart } from "@/components/dashboard/weight-chart";
+import { WeeklyDailyMetrics } from "@/components/dashboard/weekly-daily-metrics";
 import { WeeklyWeightChart } from "@/components/dashboard/weekly-weight-chart";
 import { CoachBriefCard } from "@/components/dashboard/coach-brief";
 import { MissingDataBanner } from "@/components/dashboard/missing-data-banner";
 import { ManualEntryForm } from "@/components/dashboard/manual-entry-form";
-import { GoalChips } from "@/components/dashboard/goal-chips";
 import {
+  buildCurrentWeekDailyMetrics,
   buildWeightChartData,
   getStatusBadge,
   onTrackWeight,
@@ -98,6 +99,10 @@ export function Dashboard() {
 
   const weeklyHistory = weeklyAvgWeightHistory(settings, entries, today);
   const chartData = buildWeightChartData(settings, entries);
+  const weekStart = startOfWeek(parseISO(today), { weekStartsOn: 1 });
+  const weekDays = buildCurrentWeekDailyMetrics(entries, today);
+  const weekStartDate = format(weekStart, "yyyy-MM-dd");
+  const weekEndDate = format(addDays(weekStart, 6), "yyyy-MM-dd");
   const showMissingBanner = latestEntry?.weightLbs == null;
 
   return (
@@ -161,6 +166,14 @@ export function Dashboard() {
         <WeightChart
           data={chartData}
           durationWeeks={settings.durationWeeks}
+        />
+      </div>
+
+      <div className="mb-6">
+        <WeeklyDailyMetrics
+          days={weekDays}
+          weekStartDate={weekStartDate}
+          weekEndDate={weekEndDate}
         />
       </div>
 
