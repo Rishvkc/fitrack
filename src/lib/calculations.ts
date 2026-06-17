@@ -137,6 +137,66 @@ export function weeksRemaining(settings: Settings, today: string): number {
   return Math.max(0, days / 7);
 }
 
+export function formatWeeksAndDaysRemaining(
+  settings: Settings,
+  today: string
+): string {
+  const endDate = addDays(
+    parseISO(settings.startDate),
+    settings.durationWeeks * 7
+  );
+  const daysLeft = Math.max(
+    0,
+    differenceInCalendarDays(endDate, parseISO(today))
+  );
+
+  if (daysLeft === 0) return "0 days remaining";
+
+  const weeks = Math.floor(daysLeft / 7);
+  const days = daysLeft % 7;
+
+  if (weeks === 0) {
+    return `${days} ${days === 1 ? "day" : "days"} remaining`;
+  }
+  if (days === 0) {
+    return `${weeks} ${weeks === 1 ? "week" : "weeks"} remaining`;
+  }
+  return `${weeks} ${weeks === 1 ? "week" : "weeks"} and ${days} ${days === 1 ? "day" : "days"} remaining`;
+}
+
+export interface GoalProgress {
+  totalToLose: number;
+  lost: number;
+  remaining: number;
+  pct: number;
+  goalReached: boolean;
+}
+
+export function goalProgress(
+  settings: Settings,
+  currentWeight: number | null
+): GoalProgress {
+  const totalToLose = settings.startWeightLbs - settings.goalWeightLbs;
+  const safeTotal = Math.max(totalToLose, 0.1);
+
+  if (currentWeight == null) {
+    return {
+      totalToLose,
+      lost: 0,
+      remaining: totalToLose,
+      pct: 0,
+      goalReached: false,
+    };
+  }
+
+  const lost = Math.max(0, settings.startWeightLbs - currentWeight);
+  const remaining = Math.max(0, currentWeight - settings.goalWeightLbs);
+  const goalReached = currentWeight <= settings.goalWeightLbs;
+  const pct = Math.min(100, (lost / safeTotal) * 100);
+
+  return { totalToLose, lost, remaining, pct, goalReached };
+}
+
 export function linearRegression(
   points: { x: number; y: number }[]
 ): { slope: number; intercept: number } | null {

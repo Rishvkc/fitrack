@@ -6,6 +6,7 @@ import { addDays, format, parseISO, startOfWeek, subDays } from "date-fns";
 import { Settings, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { GoalProgressBar } from "@/components/dashboard/goal-progress";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { WeightChart } from "@/components/dashboard/weight-chart";
 import { WeeklyDailyMetrics } from "@/components/dashboard/weekly-daily-metrics";
@@ -16,12 +17,12 @@ import { ManualEntryForm } from "@/components/dashboard/manual-entry-form";
 import {
   buildCurrentWeekDailyMetrics,
   buildWeightChartData,
+  formatWeeksAndDaysRemaining,
   getStatusBadge,
+  goalProgress,
   onTrackWeight,
   rollingAvgWeight,
-  targetWeeklyLossLbs,
   weeklyAvgWeightHistory,
-  weeksRemaining,
 } from "@/lib/calculations";
 import type { LogEntry, Settings as SettingsType } from "@/db/schema";
 
@@ -79,9 +80,8 @@ export function Dashboard() {
     );
   }
 
-  const targetWeeklyLoss = targetWeeklyLossLbs(settings);
   const status = getStatusBadge(settings, entries, today);
-  const weeksLeft = weeksRemaining(settings, today);
+  const timeRemaining = formatWeeksAndDaysRemaining(settings, today);
 
   const latestEntry = [...entries].sort((a, b) =>
     b.date.localeCompare(a.date)
@@ -94,8 +94,7 @@ export function Dashboard() {
 
   const onTrack = onTrackWeight(settings, today);
   const onTrackDelta = avg7 != null ? avg7 - onTrack : null;
-
-  const actualWeeklyChange = rollingAvgDelta;
+  const cutProgress = goalProgress(settings, avg7);
 
   const weeklyHistory = weeklyAvgWeightHistory(settings, entries, today);
   const chartData = buildWeightChartData(settings, entries);
@@ -113,7 +112,7 @@ export function Dashboard() {
           <p className="mt-1 text-sm text-muted-foreground">
             {settings.durationWeeks} week cut · started{" "}
             {format(parseISO(settings.startDate), "MMM d, yyyy")} ·{" "}
-            {weeksLeft.toFixed(1)} weeks remaining
+            {timeRemaining}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -139,14 +138,20 @@ export function Dashboard() {
 
 
       <div className="mb-6">
+        <GoalProgressBar
+          progress={cutProgress}
+          startWeightLbs={settings.startWeightLbs}
+          goalWeightLbs={settings.goalWeightLbs}
+          currentWeight={avg7}
+        />
+      </div>
+
+      <div className="mb-6">
         <StatCards
           rollingAvgWeight={avg7}
           rollingAvgDelta={rollingAvgDelta}
           onTrackWeight={onTrack}
           onTrackDelta={onTrackDelta}
-          priorRollingAvg={priorAvg7}
-          targetWeeklyLoss={targetWeeklyLoss}
-          actualWeeklyChange={actualWeeklyChange}
         />
       </div>
 

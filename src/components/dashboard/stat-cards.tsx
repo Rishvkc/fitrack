@@ -9,9 +9,6 @@ interface StatCardsProps {
   rollingAvgDelta: number | null;
   onTrackWeight: number;
   onTrackDelta: number | null;
-  priorRollingAvg: number | null;
-  targetWeeklyLoss: number;
-  actualWeeklyChange: number | null;
 }
 
 function colorClass(color: "green" | "amber" | "red" | "muted") {
@@ -32,23 +29,11 @@ export function StatCards({
   rollingAvgDelta,
   onTrackWeight,
   onTrackDelta,
-  priorRollingAvg,
-  targetWeeklyLoss,
-  actualWeeklyChange,
 }: StatCardsProps) {
   const onTrackColor = weightVsOnTrackColor(
     rollingAvgWeight,
     onTrackWeight
   );
-
-  const weeklyChangeColor =
-    actualWeeklyChange != null
-      ? actualWeeklyChange <= -targetWeeklyLoss * 0.9
-        ? "green"
-        : actualWeeklyChange <= -targetWeeklyLoss * 0.5
-          ? "amber"
-          : "red"
-      : "muted";
 
   const stats = [
     {
@@ -74,27 +59,6 @@ export function StatCards({
           ? `${Math.abs(onTrackDelta).toFixed(1)} lbs ${onTrackDelta <= 0 ? "ahead" : "behind"}`
           : null,
       deltaColor: colorClass(onTrackColor),
-    },
-    {
-      label: "Prior 7-day avg",
-      value:
-        priorRollingAvg != null
-          ? `${priorRollingAvg.toFixed(1)} lbs`
-          : "—",
-      delta: null,
-      deltaColor: "text-muted-foreground",
-    },
-    {
-      label: "Weekly avg change",
-      value:
-        actualWeeklyChange != null
-          ? `${actualWeeklyChange > 0 ? "+" : ""}${actualWeeklyChange.toFixed(1)} lbs`
-          : "—",
-      delta:
-        actualWeeklyChange != null
-          ? `target ${(-targetWeeklyLoss).toFixed(1)} lbs/wk`
-          : null,
-      deltaColor: colorClass(weeklyChangeColor),
     },
   ];
 
