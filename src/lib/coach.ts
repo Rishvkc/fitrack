@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { ensureSchema } from "@/db/init-schema";
 import { logEntries } from "@/db/schema";
 import {
+  filterEntriesFromStartDate,
   onTrackWeight,
   rollingAvgWeight,
   targetWeeklyLossLbs,
@@ -45,17 +46,22 @@ export async function generateCoachBrief(
     throw new Error("HUGGINGFACE_API_KEY not configured");
   }
 
-  const allEntries = await db.query.logEntries.findMany();
+  const allEntries = filterEntriesFromStartDate(
+    await db.query.logEntries.findMany(),
+    settings.startDate
+  );
   const todayEntry = allEntries.find((e) => e.date === date);
   const targetWeeklyLoss = targetWeeklyLossLbs(settings);
 
-  const avg7 = rollingAvgWeight(allEntries, date);
+  const avg7 = rollingAvgWeight(allEntries, date, 7, settings.startDate);
   const priorAvg7 = rollingAvgWeight(
     allEntries,
     format(
       new Date(parseISO(date).getTime() - 7 * 86400000),
       "yyyy-MM-dd"
-    )
+    ),
+    7,
+    settings.startDate
   );
   const onTrack = onTrackWeight(settings, date);
   const weightDelta = avg7 != null ? avg7 - onTrack : null;

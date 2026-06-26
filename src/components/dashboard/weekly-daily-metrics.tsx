@@ -26,6 +26,21 @@ export function WeeklyDailyMetrics({
 }: WeeklyDailyMetricsProps) {
   const weekLabel = `${format(parseISO(weekStartDate), "MMM d")} – ${format(parseISO(weekEndDate), "MMM d")}`;
 
+  if (days.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base font-medium">This week</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            No days to show yet — your cut hasn&apos;t started this week.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader className="pb-2">

@@ -10,6 +10,18 @@ import type { LogEntry, Settings } from "@/db/schema";
 
 export type StatusBadge = "on_track" | "behind" | "goal_reached";
 
+/** Only entries on or after the cut start date (yyyy-MM-dd). */
+export function filterEntriesFromStartDate(
+  entries: LogEntry[],
+  startDate: string
+): LogEntry[] {
+  return entries.filter((e) => e.date >= startDate);
+}
+
+function isOnOrAfterStartDate(date: string, startDate: string): boolean {
+  return date >= startDate;
+}
+
 export interface EnrichedLogEntry extends LogEntry {
   computedTdee: number | null;
   computedDeficit: number | null;
@@ -63,13 +75,15 @@ export function targetWeeklyLossLbs(settings: Settings): number {
 export function rollingAvgWeight(
   entries: LogEntry[],
   asOfDate: string,
-  windowDays = 7
+  windowDays = 7,
+  startDate?: string
 ): number | null {
   const end = parseISO(asOfDate);
   const weights: number[] = [];
 
   for (let i = 0; i < windowDays; i++) {
     const d = format(subDays(end, i), "yyyy-MM-dd");
+    if (startDate && !isOnOrAfterStartDate(d, startDate)) continue;
     const entry = entries.find((e) => e.date === d);
     if (entry?.weightLbs != null) weights.push(entry.weightLbs);
   }
@@ -96,12 +110,20 @@ export function weeklyAvgWeightHistory(
 
   for (let w = numWeeks - 1; w >= 0; w--) {
     const weekEnd = format(subDays(parseISO(asOfDate), w * 7), "yyyy-MM-dd");
-    const avg = rollingAvgWeight(entries, weekEnd);
+    if (!isOnOrAfterStartDate(weekEnd, settings.startDate)) continue;
+
+    const avg = rollingAvgWeight(
+      entries,
+      weekEnd,
+      7,
+      settings.startDate
+    );
     if (avg == null) continue;
 
     const weightsInWindow: number[] = [];
     for (let i = 0; i < 7; i++) {
       const d = format(subDays(parseISO(weekEnd), i), "yyyy-MM-dd");
+      if (!isOnOrAfterStartDate(d, settings.startDate)) continue;
       const entry = entries.find((e) => e.date === d);
       if (entry?.weightLbs != null) weightsInWindow.push(entry.weightLbs);
     }
@@ -222,7 +244,10 @@ export function projectedWeight(
   const dayMs = 86400000;
 
   const weightPoints = entries
-    .filter((e) => e.weightLbs != null)
+    .filter(
+      (e) =>
+        e.weightLbs != null && isOnOrAfterStartDate(e.date, settings.startDate)
+    )
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-14)
     .map((e) => ({
@@ -246,7 +271,10 @@ export function weightTrendLbsPerWeek(
   const dayMs = 86400000;
 
   const weightPoints = entries
-    .filter((e) => e.weightLbs != null)
+    .filter(
+      (e) =>
+        e.weightLbs != null && isOnOrAfterStartDate(e.date, settings.startDate)
+    )
     .sort((a, b) => a.date.localeCompare(b.date))
     .slice(-14)
     .map((e) => ({
@@ -283,7 +311,7 @@ export function getStatusBadge(
   entries: LogEntry[],
   today: string
 ): StatusBadge {
-  const avg7 = rollingAvgWeight(entries, today);
+  const avg7 = rollingAvgWeight(entries, today, 7, settings.startDate);
   if (avg7 == null) return "behind";
 
   if (avg7 <= settings.goalWeightLbs) {
@@ -341,7 +369,7 @@ export function buildWeightChartData(
       week,
       weekLabel: `Wk ${week}`,
       date: dateStr,
-      rollingAvg: rollingAvgWeight(entries, dateStr),
+      rollingAvg: rollingAvgWeight(entries, dateStr, 7, settings.startDate),
       projected: projectedWeight(settings, entries, dateStr),
       goal: onTrackWeight(settings, dateStr),
     });
@@ -380,10 +408,11 @@ export interface WeekDayMetrics {
   runningAvgBurned: number | null;
 }
 
-/** Mon–Sun daily metrics for the calendar week containing asOfDate. */
+/** Mon–Sun daily metrics for the calendar week containing asOfDate (cut start onward). */
 export function buildCurrentWeekDailyMetrics(
   entries: LogEntry[],
-  asOfDate: string
+  asOfDate: string,
+  startDate: string
 ): WeekDayMetrics[] {
   const ref = parseISO(asOfDate);
   const weekStart = startOfWeek(ref, { weekStartsOn: 1 });
@@ -395,6 +424,8 @@ export function buildCurrentWeekDailyMetrics(
   for (let i = 0; i < 7; i++) {
     const day = addDays(weekStart, i);
     const dateStr = format(day, "yyyy-MM-dd");
+    if (!isOnOrAfterStartDate(dateStr, startDate)) continue;
+
     const entry = entries.find((e) => e.date === dateStr);
 
     const weightLbs = entry?.weightLbs ?? null;

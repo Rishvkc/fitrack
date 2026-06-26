@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { ensureSchema } from "@/db/init-schema";
 import { logEntries } from "@/db/schema";
 import { verifyShortcutAuth } from "@/lib/auth";
+import { filterEntriesFromStartDate } from "@/lib/calculations";
 import { upsertLogEntry } from "@/lib/log-helpers";
 
 /** Apple Shortcuts often wraps dictionaries or omits keys when encoding JSON. */
@@ -115,10 +116,14 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     await ensureSchema();
+    const settings = await db.query.settings.findFirst();
     const entries = await db.query.logEntries.findMany({
       orderBy: [desc(logEntries.date)],
     });
-    return NextResponse.json({ entries });
+    const visible = settings
+      ? filterEntriesFromStartDate(entries, settings.startDate)
+      : entries;
+    return NextResponse.json({ entries: visible });
   } catch (error) {
     console.error("GET /api/log error:", error);
     return NextResponse.json(

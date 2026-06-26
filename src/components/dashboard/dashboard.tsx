@@ -17,6 +17,7 @@ import { ManualEntryForm } from "@/components/dashboard/manual-entry-form";
 import {
   buildCurrentWeekDailyMetrics,
   buildWeightChartData,
+  filterEntriesFromStartDate,
   formatWeeksAndDaysRemaining,
   getStatusBadge,
   goalProgress,
@@ -80,15 +81,21 @@ export function Dashboard() {
     );
   }
 
-  const status = getStatusBadge(settings, entries, today);
+  const cutEntries = filterEntriesFromStartDate(entries, settings.startDate);
+  const status = getStatusBadge(settings, cutEntries, today);
   const timeRemaining = formatWeeksAndDaysRemaining(settings, today);
 
-  const latestEntry = [...entries].sort((a, b) =>
+  const latestEntry = [...cutEntries].sort((a, b) =>
     b.date.localeCompare(a.date)
   )[0];
 
-  const avg7 = rollingAvgWeight(entries, today);
-  const priorAvg7 = rollingAvgWeight(entries, weekAgo);
+  const avg7 = rollingAvgWeight(cutEntries, today, 7, settings.startDate);
+  const priorAvg7 = rollingAvgWeight(
+    cutEntries,
+    weekAgo,
+    7,
+    settings.startDate
+  );
   const rollingAvgDelta =
     avg7 != null && priorAvg7 != null ? avg7 - priorAvg7 : null;
 
@@ -96,12 +103,19 @@ export function Dashboard() {
   const onTrackDelta = avg7 != null ? avg7 - onTrack : null;
   const cutProgress = goalProgress(settings, avg7);
 
-  const weeklyHistory = weeklyAvgWeightHistory(settings, entries, today);
-  const chartData = buildWeightChartData(settings, entries);
   const weekStart = startOfWeek(parseISO(today), { weekStartsOn: 1 });
-  const weekDays = buildCurrentWeekDailyMetrics(entries, today);
-  const weekStartDate = format(weekStart, "yyyy-MM-dd");
-  const weekEndDate = format(addDays(weekStart, 6), "yyyy-MM-dd");
+  const weeklyHistory = weeklyAvgWeightHistory(settings, cutEntries, today);
+  const chartData = buildWeightChartData(settings, cutEntries);
+  const weekDays = buildCurrentWeekDailyMetrics(
+    cutEntries,
+    today,
+    settings.startDate
+  );
+  const weekStartDate =
+    weekDays[0]?.date ?? format(weekStart, "yyyy-MM-dd");
+  const weekEndDate =
+    weekDays[weekDays.length - 1]?.date ??
+    format(addDays(weekStart, 6), "yyyy-MM-dd");
   const showMissingBanner = latestEntry?.weightLbs == null;
 
   return (
