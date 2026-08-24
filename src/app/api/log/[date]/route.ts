@@ -36,14 +36,19 @@ export async function PATCH(
   try {
     await ensureSchema();
     const body = await request.json();
-    const entry = await upsertLogEntry({
+    const patch: Parameters<typeof upsertLogEntry>[0] = {
       date: params.date,
-      weight_lbs: body.weight_lbs,
-      calories_consumed: body.calories_consumed,
-      active_calories: body.active_calories,
-      resting_calories: body.resting_calories,
       data_source: "manual",
-    });
+    };
+    if ("weight_lbs" in body) patch.weight_lbs = body.weight_lbs;
+    if ("calories_consumed" in body) patch.calories_consumed = body.calories_consumed;
+    if ("active_calories" in body) patch.active_calories = body.active_calories;
+    if ("resting_calories" in body) patch.resting_calories = body.resting_calories;
+    if ("lifting_volume_lbs" in body) {
+      patch.lifting_volume_lbs = body.lifting_volume_lbs;
+    }
+
+    const entry = await upsertLogEntry(patch);
 
     return NextResponse.json({ success: true, entry });
   } catch (error) {

@@ -32,6 +32,7 @@ export function ManualEntryForm({
   const [calories, setCalories] = useState("");
   const [active, setActive] = useState("");
   const [resting, setResting] = useState("");
+  const [liftingVolume, setLiftingVolume] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,15 +42,17 @@ export function ManualEntryForm({
     setError(null);
 
     try {
+      const body: Record<string, number | null> = {};
+      if (weight.trim()) body.weight_lbs = Number(weight);
+      if (calories.trim()) body.calories_consumed = Number(calories);
+      if (active.trim()) body.active_calories = Number(active);
+      if (resting.trim()) body.resting_calories = Number(resting);
+      if (liftingVolume.trim()) body.lifting_volume_lbs = Number(liftingVolume);
+
       const res = await fetch(`/api/log/${date}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          weight_lbs: weight ? Number(weight) : null,
-          calories_consumed: calories ? Number(calories) : null,
-          active_calories: active ? Number(active) : null,
-          resting_calories: resting ? Number(resting) : null,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -122,6 +125,16 @@ export function ManualEntryForm({
               placeholder="Optional"
               value={resting}
               onChange={(e) => setResting(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="lifting">Lifting volume (lbs)</Label>
+            <Input
+              id="lifting"
+              type="number"
+              placeholder="Optional"
+              value={liftingVolume}
+              onChange={(e) => setLiftingVolume(e.target.value)}
             />
           </div>
           {error && <p className="text-sm text-red-600">{error}</p>}

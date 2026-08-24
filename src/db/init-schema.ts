@@ -33,9 +33,18 @@ export async function ensureSchema(): Promise<void> {
       deficit INTEGER,
       data_source TEXT NOT NULL DEFAULT 'shortcut',
       coach_brief TEXT,
-      coach_brief_generated TEXT
+      coach_brief_generated TEXT,
+      lifting_volume_lbs REAL
     )
   `);
+
+  try {
+    await client.execute(
+      `ALTER TABLE log_entries ADD COLUMN lifting_volume_lbs REAL`
+    );
+  } catch {
+    // column already exists
+  }
 
   initialized = true;
 }

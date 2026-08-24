@@ -51,7 +51,7 @@ export async function generateCoachBrief(
     settings.startDate
   );
   const todayEntry = allEntries.find((e) => e.date === date);
-  const targetWeeklyLoss = targetWeeklyLossLbs(settings);
+  const targetWeeklyLoss = targetWeeklyLossLbs(settings, allEntries, date);
 
   const avg7 = rollingAvgWeight(allEntries, date, 7, settings.startDate);
   const priorAvg7 = rollingAvgWeight(
@@ -63,7 +63,7 @@ export async function generateCoachBrief(
     7,
     settings.startDate
   );
-  const onTrack = onTrackWeight(settings, date);
+  const onTrack = onTrackWeight(settings, allEntries, date);
   const weightDelta = avg7 != null ? avg7 - onTrack : null;
   const weeklyChange =
     avg7 != null && priorAvg7 != null ? avg7 - priorAvg7 : null;

@@ -8,6 +8,7 @@ export interface LogInput {
   calories_consumed?: number | null;
   active_calories?: number | null;
   resting_calories?: number | null;
+  lifting_volume_lbs?: number | null;
   data_source?: "shortcut" | "manual";
 }
 
@@ -45,6 +46,10 @@ export async function upsertLogEntry(input: LogInput): Promise<LogEntry> {
     input.resting_calories !== undefined
       ? input.resting_calories
       : (existing?.restingCalories ?? null);
+  const liftingVolumeLbs =
+    input.lifting_volume_lbs !== undefined
+      ? input.lifting_volume_lbs
+      : (existing?.liftingVolumeLbs ?? null);
 
   const { tdee, deficit } = computeTdeeAndDeficit(
     activeCalories,
@@ -60,6 +65,7 @@ export async function upsertLogEntry(input: LogInput): Promise<LogEntry> {
     restingCalories,
     tdee,
     deficit,
+    liftingVolumeLbs,
     dataSource: input.data_source ?? existing?.dataSource ?? "shortcut",
   };
 

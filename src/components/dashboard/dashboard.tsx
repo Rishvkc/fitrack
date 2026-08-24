@@ -10,6 +10,7 @@ import { GoalProgressBar } from "@/components/dashboard/goal-progress";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { WeightChart } from "@/components/dashboard/weight-chart";
 import { WeeklyDailyMetrics } from "@/components/dashboard/weekly-daily-metrics";
+import { LiftingVolumeChart } from "@/components/dashboard/lifting-volume-chart";
 import { WeeklyWeightChart } from "@/components/dashboard/weekly-weight-chart";
 import { CoachBriefCard } from "@/components/dashboard/coach-brief";
 import { MissingDataBanner } from "@/components/dashboard/missing-data-banner";
@@ -24,6 +25,7 @@ import {
   onTrackWeight,
   rollingAvgWeight,
   weeklyAvgWeightHistory,
+  weeklyLiftingVolumeHistory,
 } from "@/lib/calculations";
 import type { LogEntry, Settings as SettingsType } from "@/db/schema";
 
@@ -99,12 +101,17 @@ export function Dashboard() {
   const rollingAvgDelta =
     avg7 != null && priorAvg7 != null ? avg7 - priorAvg7 : null;
 
-  const onTrack = onTrackWeight(settings, today);
+  const onTrack = onTrackWeight(settings, cutEntries, today);
   const onTrackDelta = avg7 != null ? avg7 - onTrack : null;
   const cutProgress = goalProgress(settings, avg7);
 
   const weekStart = startOfWeek(parseISO(today), { weekStartsOn: 1 });
   const weeklyHistory = weeklyAvgWeightHistory(settings, cutEntries, today);
+  const liftingHistory = weeklyLiftingVolumeHistory(
+    cutEntries,
+    today,
+    settings.startDate
+  );
   const chartData = buildWeightChartData(settings, cutEntries);
   const weekDays = buildCurrentWeekDailyMetrics(
     cutEntries,
@@ -193,7 +200,12 @@ export function Dashboard() {
           days={weekDays}
           weekStartDate={weekStartDate}
           weekEndDate={weekEndDate}
+          onUpdate={loadData}
         />
+      </div>
+
+      <div className="mb-6">
+        <LiftingVolumeChart weeks={liftingHistory} />
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">

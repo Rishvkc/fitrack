@@ -57,18 +57,68 @@ export function targetDeficit(settings: Settings): number {
   return Math.round((weeklyLossLbs * 3500) / 7);
 }
 
-export function onTrackWeight(settings: Settings, date: string): number {
-  const daysElapsed = differenceInCalendarDays(
-    parseISO(date),
-    parseISO(settings.startDate)
+export function onTrackWeight(
+  settings: Settings,
+  entries: LogEntry[],
+  date: string
+): number {
+  const start = parseISO(settings.startDate);
+  const daysElapsed = Math.max(
+    0,
+    differenceInCalendarDays(parseISO(date), start)
   );
-  const dailyLoss =
-    (settings.startWeightLbs * settings.targetLossPctWeek) / 7;
-  return settings.startWeightLbs - dailyLoss * Math.max(0, daysElapsed);
+  const weekIndex = Math.floor(daysElapsed / 7);
+  const dayInWeek = daysElapsed % 7;
+  const pct = settings.targetLossPctWeek;
+
+  let weekStartOnTrack = settings.startWeightLbs;
+
+  for (let w = 0; w < weekIndex; w++) {
+    const baseline = baselineWeightForCutWeek(settings, entries, w);
+    weekStartOnTrack -= baseline * pct;
+  }
+
+  const currentWeekBaseline = baselineWeightForCutWeek(
+    settings,
+    entries,
+    weekIndex
+  );
+  const dailyLoss = (currentWeekBaseline * pct) / 7;
+
+  return weekStartOnTrack - dailyLoss * dayInWeek;
 }
 
-export function targetWeeklyLossLbs(settings: Settings): number {
-  return settings.startWeightLbs * settings.targetLossPctWeek;
+/** Prior week's 7-day avg at week end, or start weight for week 0. */
+function baselineWeightForCutWeek(
+  settings: Settings,
+  entries: LogEntry[],
+  weekIndex: number
+): number {
+  if (weekIndex === 0) return settings.startWeightLbs;
+
+  const priorWeekEnd = format(
+    addDays(parseISO(settings.startDate), (weekIndex - 1) * 7 + 6),
+    "yyyy-MM-dd"
+  );
+  return (
+    rollingAvgWeight(entries, priorWeekEnd, 7, settings.startDate) ??
+    settings.startWeightLbs
+  );
+}
+
+export function targetWeeklyLossLbs(
+  settings: Settings,
+  entries: LogEntry[],
+  asOfDate: string
+): number {
+  const weekIndex = Math.floor(
+    Math.max(
+      0,
+      differenceInCalendarDays(parseISO(asOfDate), parseISO(settings.startDate))
+    ) / 7
+  );
+  const baseline = baselineWeightForCutWeek(settings, entries, weekIndex);
+  return baseline * settings.targetLossPctWeek;
 }
 
 /** 7-day rolling average of non-null weigh-ins ending on asOfDate (inclusive). */
@@ -131,7 +181,7 @@ export function weeklyAvgWeightHistory(
     snapshots.push({
       weekEndDate: weekEnd,
       avgWeight: avg,
-      onTrackWeight: onTrackWeight(settings, weekEnd),
+      onTrackWeight: onTrackWeight(settings, entries, weekEnd),
       sampleCount: weightsInWindow.length,
     });
   }
@@ -318,7 +368,7 @@ export function getStatusBadge(
     return "goal_reached";
   }
 
-  const onTrack = onTrackWeight(settings, today);
+  const onTrack = onTrackWeight(settings, entries, today);
   const delta = avg7 - onTrack;
 
   if (delta <= 0.5) return "on_track";
@@ -371,7 +421,7 @@ export function buildWeightChartData(
       date: dateStr,
       rollingAvg: rollingAvgWeight(entries, dateStr, 7, settings.startDate),
       projected: projectedWeight(settings, entries, dateStr),
-      goal: onTrackWeight(settings, dateStr),
+      goal: onTrackWeight(settings, entries, dateStr),
     });
   }
 
@@ -403,9 +453,59 @@ export interface WeekDayMetrics {
   weightLbs: number | null;
   caloriesConsumed: number | null;
   caloriesBurned: number | null;
+  activeCalories: number | null;
+  restingCalories: number | null;
+  liftingVolumeLbs: number | null;
   runningAvgWeight: number | null;
   runningAvgConsumed: number | null;
   runningAvgBurned: number | null;
+  runningAvgLiftingVolume: number | null;
+}
+
+export interface WeeklyLiftingSnapshot {
+  weekEndDate: string;
+  weekLabel: string;
+  totalVolume: number;
+  weeklyAvgVolume: number;
+  liftDays: number;
+}
+
+/** Weekly lifting volume trend (avg lbs per lift day, per week). */
+export function weeklyLiftingVolumeHistory(
+  entries: LogEntry[],
+  asOfDate: string,
+  startDate: string,
+  numWeeks = 8
+): WeeklyLiftingSnapshot[] {
+  const snapshots: WeeklyLiftingSnapshot[] = [];
+
+  for (let w = numWeeks - 1; w >= 0; w--) {
+    const weekEnd = format(subDays(parseISO(asOfDate), w * 7), "yyyy-MM-dd");
+    if (!isOnOrAfterStartDate(weekEnd, startDate)) continue;
+
+    const volumes: number[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = format(subDays(parseISO(weekEnd), i), "yyyy-MM-dd");
+      if (!isOnOrAfterStartDate(d, startDate)) continue;
+      const entry = entries.find((e) => e.date === d);
+      if (entry?.liftingVolumeLbs != null) {
+        volumes.push(entry.liftingVolumeLbs);
+      }
+    }
+
+    if (volumes.length === 0) continue;
+
+    const totalVolume = volumes.reduce((a, b) => a + b, 0);
+    snapshots.push({
+      weekEndDate: weekEnd,
+      weekLabel: format(parseISO(weekEnd), "M/d"),
+      totalVolume,
+      weeklyAvgVolume: totalVolume / volumes.length,
+      liftDays: volumes.length,
+    });
+  }
+
+  return snapshots;
 }
 
 /** Mon–Sun daily metrics for the calendar week containing asOfDate (cut start onward). */
@@ -419,6 +519,7 @@ export function buildCurrentWeekDailyMetrics(
   const weights: number[] = [];
   const consumed: number[] = [];
   const burned: number[] = [];
+  const liftingVolumes: number[] = [];
   const days: WeekDayMetrics[] = [];
 
   for (let i = 0; i < 7; i++) {
@@ -430,11 +531,15 @@ export function buildCurrentWeekDailyMetrics(
 
     const weightLbs = entry?.weightLbs ?? null;
     const caloriesConsumed = entry?.caloriesConsumed ?? null;
+    const activeCalories = entry?.activeCalories ?? null;
+    const restingCalories = entry?.restingCalories ?? null;
     const caloriesBurnedVal = entry ? caloriesBurned(entry) : null;
+    const liftingVolumeLbs = entry?.liftingVolumeLbs ?? null;
 
     if (weightLbs != null) weights.push(weightLbs);
     if (caloriesConsumed != null) consumed.push(caloriesConsumed);
     if (caloriesBurnedVal != null) burned.push(caloriesBurnedVal);
+    if (liftingVolumeLbs != null) liftingVolumes.push(liftingVolumeLbs);
 
     days.push({
       date: dateStr,
@@ -444,9 +549,13 @@ export function buildCurrentWeekDailyMetrics(
       weightLbs,
       caloriesConsumed,
       caloriesBurned: caloriesBurnedVal,
+      activeCalories,
+      restingCalories,
+      liftingVolumeLbs,
       runningAvgWeight: avgNonNull(weights),
       runningAvgConsumed: avgNonNull(consumed),
       runningAvgBurned: avgNonNull(burned),
+      runningAvgLiftingVolume: avgNonNull(liftingVolumes),
     });
   }
 

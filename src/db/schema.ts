@@ -18,6 +18,7 @@ export const logEntries = sqliteTable("log_entries", {
   restingCalories: integer("resting_calories"),
   tdee: integer("tdee"),
   deficit: integer("deficit"),
+  liftingVolumeLbs: real("lifting_volume_lbs"),
   dataSource: text("data_source", { enum: ["shortcut", "manual"] })
     .notNull()
     .default("shortcut"),
